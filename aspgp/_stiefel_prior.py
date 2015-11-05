@@ -44,7 +44,7 @@ class StiefelPrior(GPy.priors.Prior):
         return 0.5 * self.alpha * W ** 2
 
     def lnpdf_grad(self, W):
-        return -self.alpha * W
+        return self.alpha * W
 
     def rvs(self, n):
         W = np.ndarray((n, self.input_dim))

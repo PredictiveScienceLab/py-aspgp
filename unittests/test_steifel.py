@@ -11,13 +11,13 @@ def f(X, A):
     G = np.einsum('jk,ki->ji', A, X)
     return F, G
 
-dim = 100
+dim = 10
 sdim = 2
 A = scipy.linalg.toeplitz([2, -1] + [0] * (dim-2))
 w, v = scipy.linalg.eigh(A)
 
 X0 = np.random.randn(dim, sdim)
-X0 = scipy.linalg.orth(X0)
+X0 = X0 / np.linalg.norm(X0, axis=0)
 
 res = optimize_stiefel_seq(f, X0, args=(A,), tau_max=1., max_it=10000, tol=1e-20,disp=True)
 X = res.X

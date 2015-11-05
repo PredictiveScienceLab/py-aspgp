@@ -62,22 +62,33 @@ def Y_func(tau, X, A):
     return np.dot(Q, X)
 
 
-#def ls_func(tau, func, func_args, X, A):
-#    return func(Y_func(tau, X, A), *func_args)[0]
+def func_obj_seq(X, dmax, func, *args):
+    """
+    An objective function used by ``optimize_stiefel_seq``.
+    """
+    n = X.shape[0]
+    d = X.shape[1]
+    F, G = func(X, *args)
+    return F, G[:, :d]
 
 
-def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-3,
-                         disp=False):
+def func_obj_seq_w_zeros(X, dmax, func, *args):
+    """
+    An objective function used by ``optimize_stiefel_seq``.
+    """
+    n = X.shape[0]
+    d = X.shape[1]
+    F, G = func(np.hstack([X, np.zeros((n, dmax - d))]), *args)
+    return F, G[:, :d]
+
+
+def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-6,
+                         disp=False, obj_func=func_obj_seq_w_zeros):
     """
     Optimize stiefel sequentially.
     """
     dmax = X0.shape[1]
-    def func_tmp(X, dmax, *args):
-        n = X.shape[0]
-        d = X.shape[1]
-        F, G = func(X, *args)
-        return F, G[:, :d]
-    res = optimize_stiefel(func_tmp, X0[:, :1], args=(dmax,) + args, tau_max=tau_max,
+    res = optimize_stiefel(obj_func, X0[:, :1], args=(dmax,func) + args, tau_max=tau_max,
                            max_it=max_it, tol=tol, disp=disp)
     for d in xrange(2, dmax + 1):
         Xd0 = res.X
@@ -86,8 +97,8 @@ def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-3,
         A = np.hstack([Xd0, xr])
         Q, R = np.linalg.qr(A)
         xr = Q[:, -1:]
-        X0 = np.hstack([Xd0, xr])
-        res = optimize_stiefel(func_tmp, X0, args=(dmax,) + args, tau_max=tau_max,
+        Xd0 = np.hstack([Xd0, xr])
+        res = optimize_stiefel(obj_func, Xd0, args=(dmax,func) + args, tau_max=tau_max,
                                max_it=max_it, tol=tol, disp=disp)
     return res
 
@@ -143,7 +154,7 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
             tau_init = np.linspace(0, tau_max, 3)[:, None]
             tau_d = np.linspace(0, tau_max, 50)[:, None]
             tau_all, F_all = pybgo.minimize(ls_func, tau_init, tau_d, fixed_noise=1e-16,
-                    add_at_least=1, tol=1e-3, scale=True,
+                    add_at_least=1, tol=1e-3, scale=False, callback=pybgo.plot_summary,
                     train_every=1)[:2]
             nfev += tau_all.shape[0]
             idx = np.argmin(F_all)

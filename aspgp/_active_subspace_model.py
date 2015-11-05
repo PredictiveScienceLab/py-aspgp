@@ -14,7 +14,7 @@ Date:
 """
 
 
-from . import opt_stiefel_gbb
+from . import optimize_stiefel_seq
 from . import ActiveSubspaceKernel
 from . import ParallelizedGPRegression
 import math
@@ -66,19 +66,8 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         """
         Optimize the object with respect to W.
         """
-        ## Initialize W using least squares
-        #XX = np.hstack([np.ones((self.X.shape[0], 1)), self.X])
-        #a, r = np.linalg.lstsq(XX, self.Y.flatten())[:2]
-        #a = a[:, None]
-        #W = (a[1:, :] / np.linalg.norm(a[1:, :]))
-        #res = opt_stiefel_gbb(_W_obj_fun, W, args=(self,), 
-        #                      **stiefel_options)
-        res = opt_stiefel_gbb(_W_obj_fun, self.kern.W, args=(self,), 
-                              **stiefel_options)
-#                disp=False,
-#                              xtol=1e-6, ftol=1e-6, gtol=1e-6,
-#                              mxitr=1000)
-#        #                       **stiefel_options)
+        res = optimize_stiefel_seq(_W_obj_fun, self.kern.W, args=(self,),
+                                   **stiefel_options)
         self.kern.W = res.X
 
     def _optimize_other(self, **kwargs):
@@ -111,9 +100,9 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         while nit <= max_it:
             self.x.append(nit) #Store iteration number history
             try:
-                self.l.append(np.float(self.kern.rbf.lengthscale.view()))
+                self.l.append(np.float(self.kern.inner_kernel.lengthscale.view()))
             except:
-                self.l.append(np.asarray(self.kern.rbf.lengthscale.view()))
+                self.l.append(np.asarray(self.kern.inner_kernel.lengthscale.view()))
             nit += 1
             old_log_like = -self.objective_function()
             self.y.append(old_log_like) #Store log likelihood history 
