@@ -28,9 +28,10 @@ except:
     class OptimizeResult(object):
         pass
 import math
+import pybgo
 
 
-__all__ = ['optimize_stiefel']
+__all__ = ['optimize_stiefel', 'optimize_stiefel_seq']
 
 
 # Line search methods available through minimize_scalar
@@ -61,12 +62,38 @@ def Y_func(tau, X, A):
     return np.dot(Q, X)
 
 
-def ls_func(tau, func, func_args, X, A):
-    return func(Y_func(tau, X, A), *func_args)[0]
+#def ls_func(tau, func, func_args, X, A):
+#    return func(Y_func(tau, X, A), *func_args)[0]
 
 
-def optimize_stiefel(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-3,
-                     disp=False, line_search_method='brent'):
+def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-3,
+                         disp=False):
+    """
+    Optimize stiefel sequentially.
+    """
+    dmax = X0.shape[1]
+    def func_tmp(X, dmax, *args):
+        n = X.shape[0]
+        d = X.shape[1]
+        F, G = func(X, *args)
+        return F, G[:, :d]
+    res = optimize_stiefel(func_tmp, X0[:, :1], args=(dmax,) + args, tau_max=tau_max,
+                           max_it=max_it, tol=tol, disp=disp)
+    for d in xrange(2, dmax + 1):
+        Xd0 = res.X
+        xr = np.random.randn(Xd0.shape[0], 1)
+        xr /= np.linalg.norm(xr)
+        A = np.hstack([Xd0, xr])
+        Q, R = np.linalg.qr(A)
+        xr = Q[:, -1:]
+        X0 = np.hstack([Xd0, xr])
+        res = optimize_stiefel(func_tmp, X0, args=(dmax,) + args, tau_max=tau_max,
+                               max_it=max_it, tol=tol, disp=disp)
+    return res
+
+
+def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
+                     disp=False, tau_find_freq=100):
     """
     Optimize a function over a Stiefel manifold.
 
@@ -76,12 +103,8 @@ def optimize_stiefel(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-3,
     :param max_it: Maximum number of iterations
     :param tol: Tolerance criteria to terminate line search
     :param disp: Choose whether to display output
-    :param line_search_method: Choose between 3 line search algorithms:
-                                Brent/ Golden/ Bounded
     :param args: Extra arguments passed to the function
     """
-    assert line_search_method.upper() in LINE_SEARCH_METHODS, \
-           'The line search can be one of: ' + str(LINE_SEARCH_METHODS)
     tol = float(tol)
     assert tol > 0, 'Tolerance must be positive'
     max_it = int(max_it)
@@ -98,33 +121,54 @@ def optimize_stiefel(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-3,
         print 'Stiefel Optimization'.center(80)
         print '{0:4s} {1:11s} {2:5s}'.format('It', 'F', '(F - F_old) / F_old')
         print '-' * 30
+
+    class LSFunc(object):
+        def __call__(self, tau):
+            return self.func(Y_func(tau[0], self.X, self.A), *self.func_args)[0]
+    ls_func = LSFunc()
+    ls_func.func = func
+    find_tau = True
+    tau_max0 = tau_max
     while nit <= max_it:
         nit += 1
         F, G = func(X, *args)
+        F_old = F
         nfev += 1
         A = compute_A(G, X)
-        ls_args = (func, args, X, A)
-        ls_res = minimize_scalar(ls_func, args=ls_args,
-                                 bounds=(0., tau_max),
-                                 method=line_search_method)
-        nfev += ls_res.nfev
-        if ls_res.x < 0:
-            print '***'
-            tau = np.linspace(0, tau_max, 100)
-            y = [ls_func(t, *ls_args) for t in tau]
-            idx = np.argmin(y)
-            ls_res.x = tau[idx]
-            ls_res.fun = y[idx]
-        tau = ls_res.x
+        ls_func.A = A
+        ls_func.X = X
+        ls_func.func_args = args
+        if find_tau or nit % tau_find_freq == 1:
+            # Need to minimize ls_func with respect to each argument
+            tau_init = np.linspace(0, tau_max, 3)[:, None]
+            tau_d = np.linspace(0, tau_max, 50)[:, None]
+            tau_all, F_all = pybgo.minimize(ls_func, tau_init, tau_d, fixed_noise=1e-16,
+                    add_at_least=1, tol=1e-3, scale=True,
+                    train_every=1)[:2]
+            nfev += tau_all.shape[0]
+            idx = np.argmin(F_all)
+            tau = tau_all[idx, 0]
+            if tau_max - tau <= 1e-6:
+                tau_max = 1.2 * tau_max
+            if tau < tau_max0:
+                tau_max = tau_max0
+            F = F_all[idx, 0]
+            find_tau = False
+        else:
+            F = ls_func([tau])
         X_old = X
-        F_old = F
-        F = ls_res.fun
         X = Y_func(tau, X, A)
         delta_F = (F_old - F) / F_old
+        if delta_F < 0:
+            if disp:
+                print '*** backtracking'
+            nit -= 1
+            find_tau = True
+            continue
         if disp:
-            print '{0:4s} {1:4.5f} {2:5e}'.format(
-             str(nit).zfill(4), F, delta_F)
-        if delta_F < tol:
+            print '{0:4s} {1:4.5f} {2:5e} tau = {3:1.5f}'.format(
+             str(nit).zfill(4), F, delta_F, tau)
+        if delta_F <= tol:
             if disp:
                 print '*** Converged ***'
             success = True
