@@ -28,7 +28,7 @@ class StiefelPrior(GPy.priors.Prior):
     domain = GPy.priors._REAL
     _instance = None
 
-    def __init__(self, input_dim, active_dim, alpha=10.):
+    def __init__(self, input_dim, active_dim, alpha=100.):
         """
         Initialize the object.
         """
@@ -41,10 +41,10 @@ class StiefelPrior(GPy.priors.Prior):
         return 'Stiefel({0:d},{1:d})'.format(self._in, self._ad)
 
     def lnpdf(self, W):
-        return 0.5 * self.alpha * W ** 2
+        return -0.5 * self.alpha * W ** 2
 
     def lnpdf_grad(self, W):
-        return self.alpha * W
+        return -self.alpha * W
 
     def rvs(self, n):
         W = np.ndarray((n, self.input_dim))

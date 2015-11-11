@@ -4,6 +4,7 @@ import scipy.linalg
 import sys
 sys.path.insert(0, '.')
 from aspgp import optimize_stiefel_seq
+from aspgp import optimize_stiefel
 
 
 def f(X, A):

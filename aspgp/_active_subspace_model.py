@@ -17,6 +17,7 @@ Date:
 from . import optimize_stiefel_seq
 from . import ActiveSubspaceKernel
 from . import ParallelizedGPRegression
+from . import hmc_step_stiefel
 import math
 import numpy as np
 from collections import Iterable
@@ -44,6 +45,11 @@ def _W_obj_fun(W, obj):
     return F, G
 
 
+def _W_log_pi(W, obj):
+    F, G = _W_obj_fun(W, obj)
+    return -F, -G
+
+
 class ActiveSubspaceGPRegression(ParallelizedGPRegression):
 
     """
@@ -69,6 +75,43 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         res = optimize_stiefel_seq(_W_obj_fun, self.kern.W, args=(self,),
                                    **stiefel_options)
         self.kern.W = res.X
+
+    def _sample_W(self, **kwargs):
+        """
+        Sample W keeping the hyper-parameters constant.
+        """
+        import matplotlib.pyplot as plt
+        plt.ion()
+        fig1, ax1 = plt.subplots()
+        fig2, ax2 = plt.subplots()
+        h1, = ax1.plot([], [], 'o', markersize=10, markeredgewidth=2)
+        h10, = ax1.plot([], [], 'o', markersize=10, markeredgewidth=2)
+        x1 = np.arange(self.kern.W.shape[0])
+        h2, = ax2.plot([], [])
+        count = 0
+        #plt.show(block=False)
+        for i in xrange(1000):
+            X, a, log_p = hmc_step_stiefel(np.array(self.kern.W), _W_log_pi, args=(self,),
+                                           **kwargs)
+            self.kern.W = X
+            count += a
+            print '{0:d}\t: ar={1:1.2f}, log_p={2:1.6e}'.format(i + 1,
+                                                                float(count) / (i + 1),
+                                                                log_p)
+            h1.set_xdata(x1)
+            h1.set_ydata(self.kern.W[:, 0])
+            h10.set_xdata(x1)
+            h10.set_ydata(self.kern.W[:, 1])
+            ax1.relim()
+            ax1.autoscale_view()
+            h2.set_xdata(np.append(h2.get_xdata(), i))
+            h2.set_ydata(np.append(h2.get_ydata(), log_p))
+            ax2.relim()
+            ax2.autoscale_view()
+            fig1.canvas.draw()
+            fig1.canvas.flush_events()
+            fig2.canvas.draw()
+            fig2.canvas.flush_events()
 
     def _optimize_other(self, **kwargs):
         """
@@ -106,8 +149,8 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
             nit += 1
             old_log_like = -self.objective_function()
             self.y.append(old_log_like) #Store log likelihood history 
-            self._optimize_other(**kwargs)
             self._optimize_W(stiefel_options)
+            self._optimize_other(**kwargs)
             log_like = -self.objective_function()
             delta_log_like = (log_like - old_log_like) / math.fabs(old_log_like)
             if disp:
@@ -117,8 +160,11 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
                 if disp:
                     print '*** Converged ***'
                 break
-        l_opt = self.optimization_runs[-1]
-        l_opt.f_opt = self.objective_function()
+        class Foo(object):
+            f_opt = None
+            x_opt = None
+        l_opt = Foo() #self.optimization_runs[-1]
+        l_opt.f_opt = -log_like# self.objective_function()
         l_opt.x_opt = self.optimizer_array.copy()
         self.optimization_runs = old_optimization_runs + [l_opt]
 

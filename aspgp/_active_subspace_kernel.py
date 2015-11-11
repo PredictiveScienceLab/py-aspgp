@@ -104,6 +104,11 @@ class ActiveSubspaceKernel(Kern):
         Evaluate only the diagonal of the covariance matrix.
         """
         return self.inner_kernel.Kdiag(self._get_Z(X))
+    
+    def gradients_X(self, dL_dK, X, X2=None):
+        Z, Z2 = self._get_Zs(X, X2)
+        tmp = self.inner_kernel.gradients_X(dL_dK, Z, Z2)
+        return np.einsum('ik,jk->ij', tmp, self.W)
 
     def update_gradients_full(self, dL_dK, X, X2=None):
         """

@@ -92,8 +92,9 @@ def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-6,
                            max_it=max_it, tol=tol, disp=disp)
     for d in xrange(2, dmax + 1):
         Xd0 = res.X
-        xr = np.random.randn(Xd0.shape[0], 1)
-        xr /= np.linalg.norm(xr)
+        #xr = np.random.randn(Xd0.shape[0], 1)
+        #xr /= np.linalg.norm(xr)
+        xr = X0[:, d-1:d]
         A = np.hstack([Xd0, xr])
         Q, R = np.linalg.qr(A)
         xr = Q[:, -1:]
@@ -135,10 +136,10 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
 
     class LSFunc(object):
         def __call__(self, tau):
-            return self.func(Y_func(tau[0], self.X, self.A), *self.func_args)[0]
+            return self.func(Y_func(tau[0] * self.tau_max, self.X, self.A), *self.func_args)[0]
     ls_func = LSFunc()
     ls_func.func = func
-    find_tau = True
+    decrease_tau = False
     tau_max0 = tau_max
     while nit <= max_it:
         nit += 1
@@ -149,36 +150,41 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
         ls_func.A = A
         ls_func.X = X
         ls_func.func_args = args
-        if find_tau or nit % tau_find_freq == 1:
+        ls_func.tau_max = tau_max
+        if nit == 1 or decrease_tau or nit % tau_find_freq == 0:
             # Need to minimize ls_func with respect to each argument
-            tau_init = np.linspace(0, tau_max, 3)[:, None]
-            tau_d = np.linspace(0, tau_max, 50)[:, None]
+            tau_init = np.linspace(0, 1., 5)[:, None]
+            tau_d = np.linspace(0, 1., 50)[:, None]
             tau_all, F_all = pybgo.minimize(ls_func, tau_init, tau_d, fixed_noise=1e-16,
-                    add_at_least=1, tol=1e-3, scale=False, callback=pybgo.plot_summary,
+                    add_at_least=3, tol=1e-2, scale=True,
                     train_every=1)[:2]
             nfev += tau_all.shape[0]
             idx = np.argmin(F_all)
-            tau = tau_all[idx, 0]
+            tau = tau_all[idx, 0] * tau_max
             if tau_max - tau <= 1e-6:
                 tau_max = 1.2 * tau_max
-            if tau < tau_max0:
-                tau_max = tau_max0
+                if disp:
+                    print 'increasing tau_max to {0:1.5e}'.format(tau_max)
+            if decrease_tau:
+                tau_max = .8 * tau_max
+                if disp:
+                    print 'decreasing max_tau to {0:1.5e}'.format(tau_max)
+                decrease_tau = False
             F = F_all[idx, 0]
-            find_tau = False
         else:
-            F = ls_func([tau])
-        X_old = X
-        X = Y_func(tau, X, A)
-        delta_F = (F_old - F) / F_old
+            F = ls_func([tau / tau_max])
+        delta_F = (F_old - F) / np.abs(F_old)
         if delta_F < 0:
             if disp:
                 print '*** backtracking'
             nit -= 1
-            find_tau = True
+            decrease_tau = True
             continue
+        X_old = X
+        X = Y_func(tau, X, A)
         if disp:
-            print '{0:4s} {1:4.5f} {2:5e} tau = {3:1.5f}'.format(
-             str(nit).zfill(4), F, delta_F, tau)
+            print '{0:4s} {1:1.5e} {2:5e} tau = {3:1.5f}, tau_max = {4:1.3e}'.format(
+             str(nit).zfill(4), F, delta_F, tau, tau_max)
         if delta_F <= tol:
             if disp:
                 print '*** Converged ***'
