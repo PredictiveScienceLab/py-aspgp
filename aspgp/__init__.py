@@ -16,6 +16,7 @@ Date:
 
 from _parallelizer import *
 from _optman import *
+from _hmc import *
 from _stiefel import *
 from _stiefel_mcmc import *
 from _stiefel_prior import *

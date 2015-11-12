@@ -17,6 +17,7 @@ Date:
 from . import optimize_stiefel_seq
 from . import ActiveSubspaceKernel
 from . import ParallelizedGPRegression
+from . import hmc_step
 from . import hmc_step_stiefel
 import math
 import numpy as np
@@ -49,6 +50,10 @@ def _W_log_pi(W, obj):
     F, G = _W_obj_fun(W, obj)
     return -F, -G
 
+def _other_log_pi(x, obj):
+    F, G = obj._objective_grads(x)
+    return F, G
+
 
 class ActiveSubspaceGPRegression(ParallelizedGPRegression):
 
@@ -65,6 +70,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         Initialize the object.
         """
         kernel = ActiveSubspaceKernel(X.shape[1], inner_kernel, W=W)
+        kernel.W.fix()
         super(ActiveSubspaceGPRegression, self).__init__(X, Y, kernel,
                                                          **kwargs)
 
@@ -76,42 +82,52 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
                                    **stiefel_options)
         self.kern.W = res.X
 
-    def _sample_W(self, **kwargs):
+    def _sample_W(self, iter=10, disp=False, **kwargs):
         """
         Sample W keeping the hyper-parameters constant.
         """
-        import matplotlib.pyplot as plt
-        plt.ion()
-        fig1, ax1 = plt.subplots()
-        fig2, ax2 = plt.subplots()
-        h1, = ax1.plot([], [], 'o', markersize=10, markeredgewidth=2)
-        h10, = ax1.plot([], [], 'o', markersize=10, markeredgewidth=2)
-        x1 = np.arange(self.kern.W.shape[0])
-        h2, = ax2.plot([], [])
         count = 0
-        #plt.show(block=False)
-        for i in xrange(1000):
+        for i in xrange(iter):
             X, a, log_p = hmc_step_stiefel(np.array(self.kern.W), _W_log_pi, args=(self,),
                                            **kwargs)
             self.kern.W = X
             count += a
-            print '{0:d}\t: ar={1:1.2f}, log_p={2:1.6e}'.format(i + 1,
-                                                                float(count) / (i + 1),
-                                                                log_p)
-            h1.set_xdata(x1)
-            h1.set_ydata(self.kern.W[:, 0])
-            h10.set_xdata(x1)
-            h10.set_ydata(self.kern.W[:, 1])
-            ax1.relim()
-            ax1.autoscale_view()
-            h2.set_xdata(np.append(h2.get_xdata(), i))
-            h2.set_ydata(np.append(h2.get_ydata(), log_p))
-            ax2.relim()
-            ax2.autoscale_view()
-            fig1.canvas.draw()
-            fig1.canvas.flush_events()
-            fig2.canvas.draw()
-            fig2.canvas.flush_events()
+            if disp:
+                print '{0:d}\t: ar={1:1.2f}, log_p={2:1.6e}'.format(i + 1,
+                                                                    float(count) / (i + 1),
+                                                                    log_p)
+        return a, log_p
+
+    def _sample_other(self, iter=10, disp=False, **kwargs):
+        """
+        Sample all the other parameters.
+        """
+        count = 0
+        for i in xrange(iter):
+            x, a, log_p = hmc_step(self.optimizer_array, _other_log_pi, args=(self,),
+                                   **kwargs)
+            self.optimizer_array = x
+            count += a
+            if disp:
+                print '{0:d}\t: ar={1:1.2f}, log_p={2:1.6e}'.format(i + 1,
+                                                                    float(count) / (i + 1),
+                                                                    log_p)
+        return count, log_p
+
+    def sample(self, iter=10, disp=False,
+            W_opts={'iter': 1, 'disp': False, 'epsilon': 0.01, 'T': 10},
+            other_opts={'iter': 1, 'disp': False, 'epsilon': 0.01, 'T': 50}):
+        count_other = 0
+        count_W = 0
+        for i in xrange(iter):
+            count_other, _ = self._sample_other(**other_opts)
+            count_W, log_p = self._sample_W(**W_opts)
+            if disp:
+                print '{0:d}\t: ar_other={1:1.2f}, ar_W={2:1.2f}, log_p={3:1.6e}'.format(i + 1,
+                                            float(count_other) / other_opts['iter'],
+                                            float(count_W) / W_opts['iter'],
+                                                                    log_p)
+                                                    
 
     def _optimize_other(self, **kwargs):
         """
@@ -119,7 +135,6 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
 
         The options are the same as those of the classic ``GPRegression.optimize()``.
         """
-        self.kern.W.fix()
         super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
         self.kern.W.unconstrain()
 

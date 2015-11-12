@@ -41,7 +41,5 @@ def hmc_step_stiefel(X0, log_pi, args=(), epsilon=.3, T=500):
     H1 = log_pi1 - .5 * np.einsum('ij,ij', U, U)
     u = np.random.rand()
     if u < math.exp(H1 - H0):
-        print 'accept'
         return X1, 1, log_pi1
-    print 'reject'
     return X0, 0, log_pi0
