@@ -18,23 +18,15 @@ rank = mpi.COMM_WORLD.Get_rank()
 
 
 DEMO_DIR = os.path.join(ASPGP_DIR, 'demos')
-PC_DIR = os.path.join(DEMO_DIR, 'pc1_data')
+PC_DIR = os.path.join(DEMO_DIR, 'gc_amp_10')
 X_FILE = os.path.join(PC_DIR, 'X.npy')
 Y_FILE = os.path.join(PC_DIR, 'Y.npy')
-G_FILE = os.path.join(PC_DIR, 'G.npy')
 
 X = np.load(X_FILE)
 Y = np.load(Y_FILE)
-G = np.load(G_FILE)
 
 
 dim = 2
-ck = GPy.kern.Matern32(dim, ARD=True)
-cm = aspgp.ClassicActiveSubspaceGPRegression(X, Y, G, ck)
-cm.optimize(messages=True)
-#print str(cm)
-#print cm.kern.Mat32.lengthscale
-
 
 k = GPy.kern.Matern32(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4.57012948037e-05)
 stiefel_opt = {'disp': False,
@@ -44,25 +36,18 @@ stiefel_opt = {'disp': False,
                'max_it': 10000}
 
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
-m.optimize_restarts(2, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
+m.optimize_restarts(500, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
 #m.sample(iter=50, disp=True)
-m.optimize_restarts(500, stiefel_options=stiefel_opt)
+#m.optimize(stiefel_options=stiefel_opt)
 #print m.kern.W
 if rank == 0:
     print str(m)
     print m.kern.Mat32.lengthscale
 
-    print 'Compare to:'
-    print str(cm)
-    print cm.kern.Mat32.lengthscale
-
     print 'Normalization test:'
     print np.dot(m.kern.W.T, m.kern.W)
 
     fig, ax = plt.subplots()
-    ax.plot(cm.kern.W, 'o', markersize=10, markeredgewidth=2)
     W = np.array(m.kern.W)
-    if W[0, 0] * cm.kern.W[0, 0] < 0.:
-        W *= -1.
     ax.plot(W, 'x', markersize=10, markeredgewidth=2)
     plt.show()

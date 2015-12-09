@@ -80,10 +80,10 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         """
         Optimize the object with respect to W.
         """
-        res = optimize_stiefel_seq(_W_obj_fun, self.kern.W, args=(self,),
-                                   **stiefel_options)
-        #res = optimize_stiefel(_W_obj_fun, self.kern.W, args=(self,),
+        #res = optimize_stiefel_seq(_W_obj_fun, self.kern.W, args=(self,),
         #                           **stiefel_options)
+        res = optimize_stiefel(_W_obj_fun, self.kern.W, args=(self,),
+                                   **stiefel_options)
         self.kern.W = res.X
 
     def _sample_W(self, iter=10, disp=False, **kwargs):
