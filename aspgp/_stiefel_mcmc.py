@@ -8,7 +8,7 @@ def orth_stiefel_project(X, U):
     return U - .5 * np.dot(X, tmp + tmp.T)
 
 
-def hmc_step_stiefel(X0, log_pi, args=(), epsilon=.3, T=500):
+def hmc_step_stiefel(X0, log_pi, args=(), epsilon=.01, T=2):
     """
     Hamiltonian Monte Carlo for Stiefel manifolds.
     """

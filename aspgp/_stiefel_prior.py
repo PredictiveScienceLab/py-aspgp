@@ -28,7 +28,7 @@ class StiefelPrior(GPy.priors.Prior):
     domain = GPy.priors._REAL
     _instance = None
 
-    def __init__(self, input_dim, active_dim, alpha=100.):
+    def __init__(self, input_dim, active_dim, alpha=10.):
         """
         Initialize the object.
         """
@@ -47,10 +47,7 @@ class StiefelPrior(GPy.priors.Prior):
         return -self.alpha * W
 
     def rvs(self, n):
-        W = np.ndarray((n, self.input_dim))
-        for i in xrange(n):
-            W[i, :] = orth(randn(self._in, self._ad)).flatten()
-        return W
+        return orth(randn(self._in, self._ad)).flatten()
 
 
 class UninformativePrior(GPy.priors.Prior):

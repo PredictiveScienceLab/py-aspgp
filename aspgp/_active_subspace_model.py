@@ -15,6 +15,7 @@ Date:
 
 
 from . import optimize_stiefel_seq
+from . import optimize_stiefel
 from . import ActiveSubspaceKernel
 from . import ParallelizedGPRegression
 from . import hmc_step
@@ -24,6 +25,7 @@ import numpy as np
 from collections import Iterable
 from GPy.models import GPRegression
 from GPy.kern import RBF
+from pysmc import MCMCWrapper
 from pdb import set_trace as keyboard
 
 __all__ = ['ActiveSubspaceGPRegression']
@@ -80,6 +82,8 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         """
         res = optimize_stiefel_seq(_W_obj_fun, self.kern.W, args=(self,),
                                    **stiefel_options)
+        #res = optimize_stiefel(_W_obj_fun, self.kern.W, args=(self,),
+        #                           **stiefel_options)
         self.kern.W = res.X
 
     def _sample_W(self, iter=10, disp=False, **kwargs):
@@ -96,7 +100,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
                 print '{0:d}\t: ar={1:1.2f}, log_p={2:1.6e}'.format(i + 1,
                                                                     float(count) / (i + 1),
                                                                     log_p)
-        return a, log_p
+        return count, log_p
 
     def _sample_other(self, iter=10, disp=False, **kwargs):
         """
@@ -115,8 +119,8 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         return count, log_p
 
     def sample(self, iter=10, disp=False,
-            W_opts={'iter': 1, 'disp': False, 'epsilon': 0.01, 'T': 10},
-            other_opts={'iter': 1, 'disp': False, 'epsilon': 0.01, 'T': 50}):
+            W_opts={'iter': 5, 'disp': False, 'epsilon': 0.1, 'T': 50},
+            other_opts={'iter': 5, 'disp': False, 'epsilon': 0.1, 'T': 10}):
         count_other = 0
         count_W = 0
         for i in xrange(iter):
@@ -135,10 +139,11 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
 
         The options are the same as those of the classic ``GPRegression.optimize()``.
         """
+        self.kern.W.fix()
         super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
         self.kern.W.unconstrain()
 
-    def optimize(self, max_it=1000, tol=1e-4, disp=True, stiefel_options={}, **kwargs):
+    def optimize(self, max_it=1000, tol=1e-4, disp=False, stiefel_options={}, **kwargs):
         """
         Optimize the model.
         """

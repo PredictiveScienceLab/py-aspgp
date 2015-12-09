@@ -13,6 +13,8 @@ sys.path.insert(0, ASPGP_DIR)
 import aspgp
 import GPy
 import pybgo
+from mpi4py import MPI as mpi
+rank = mpi.COMM_WORLD.Get_rank()
 
 
 DEMO_DIR = os.path.join(ASPGP_DIR, 'demos')
@@ -30,23 +32,37 @@ dim = 3
 ck = GPy.kern.Matern32(dim, ARD=True)
 cm = aspgp.ClassicActiveSubspaceGPRegression(X, Y, G, ck)
 cm.optimize(messages=True)
-print str(cm)
-print cm.kern.Mat32.lengthscale
+#print str(cm)
+#print cm.kern.Mat32.lengthscale
 
 
 k = GPy.kern.Matern32(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4.57012948037e-05)
 stiefel_opt = {'disp': False,
-               'tau_max': 1.,
+               'tau_max': .01,
                'tol': 1e-5,
+               'tau_find_freq': 10,
                'max_it': 10000}
 
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
-m.sample(iter=1000, disp=True)
-print str(m)
-print m.kern.Mat32.lengthscale
+m.optimize_restarts(10, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
+#m.sample(iter=50, disp=True)
+#m.optimize(stiefel_options=stiefel_opt)
+#print m.kern.W
+if rank == 0:
+    print str(m)
+    print m.kern.Mat32.lengthscale
 
+    print 'Compare to:'
+    print str(cm)
+    print cm.kern.Mat32.lengthscale
 
-fig, ax = plt.subplots()
-ax.plot(cm.kern.W, 'o', markersize=10, markeredgewidth=2)
-ax.plot(m.kern.W, 'x', markersize=10, markeredgewidth=2)
-plt.show()
+    print 'Normalization test:'
+    print np.dot(m.kern.W.T, m.kern.W)
+
+    fig, ax = plt.subplots()
+    ax.plot(cm.kern.W, 'o', markersize=10, markeredgewidth=2)
+    W = np.array(m.kern.W)
+    if W[0, 0] * cm.kern.W[0, 0] < 0.:
+        W *= -1.
+    ax.plot(W, 'x', markersize=10, markeredgewidth=2)
+    plt.show()

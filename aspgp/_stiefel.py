@@ -83,29 +83,27 @@ def func_obj_seq_w_zeros(X, dmax, func, *args):
 
 
 def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-6,
-                         disp=False, obj_func=func_obj_seq_w_zeros):
+                         disp=False, obj_func=func_obj_seq_w_zeros, **kwargs):
     """
     Optimize stiefel sequentially.
     """
     dmax = X0.shape[1]
     res = optimize_stiefel(obj_func, X0[:, :1], args=(dmax,func) + args, tau_max=tau_max,
-                           max_it=max_it, tol=tol, disp=disp)
+                           max_it=max_it, tol=tol, disp=disp, **kwargs)
     for d in xrange(2, dmax + 1):
         Xd0 = res.X
-        #xr = np.random.randn(Xd0.shape[0], 1)
-        #xr /= np.linalg.norm(xr)
         xr = X0[:, d-1:d]
         A = np.hstack([Xd0, xr])
         Q, R = np.linalg.qr(A)
         xr = Q[:, -1:]
         Xd0 = np.hstack([Xd0, xr])
         res = optimize_stiefel(obj_func, Xd0, args=(dmax,func) + args, tau_max=tau_max,
-                               max_it=max_it, tol=tol, disp=disp)
+                               max_it=max_it, tol=tol, disp=disp, **kwargs)
     return res
 
 
 def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
-                     disp=False, tau_find_freq=100):
+                     disp=True, tau_find_freq=100):
     """
     Optimize a function over a Stiefel manifold.
 
