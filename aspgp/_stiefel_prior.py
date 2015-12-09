@@ -56,12 +56,13 @@ class StiefelPrior(GPy.priors.Prior):
         d = self.d
         k = self.k
         G = -self.alpha * W.reshape((D, d))
-        G[:-k, -k:] = 0.
-        G[-k:, :-k] = 0.
-        G[-k:, -k:] = np.eye(k)
+        if k >= 1:
+            G[:-k, -k:] = 0.
+            G[-k:, :-k] = 0.
+            G[-k:, -k:] = np.zeros((k, k))
         return G.flatten()
 
-    def rvs(self, n):
+    def rvs(self, n=1):
         """
         It ignores the dimension ``n``.
         """
@@ -69,8 +70,8 @@ class StiefelPrior(GPy.priors.Prior):
         d = self.d
         k = self.k
         W_sub = orth(randn(D - k, d - k))
-        return np.bmat([[W_sub, np.zeros((D - k, k))],
-                        [np.zeros((k, d - k)), np.eye(k)]]).flatten()
+        return np.vstack([np.hstack([W_sub, np.zeros((D - k, k))]),
+                        np.hstack([np.zeros((k, d - k)), np.eye(k)])]).flatten()
 
 
 class UninformativePrior(GPy.priors.Prior):
@@ -93,5 +94,5 @@ class UninformativePrior(GPy.priors.Prior):
     def lnpdf_grad(self, x):
         return -1. / x
 
-    def rvs(self, n):
+    def rvs(self):
         return 1.

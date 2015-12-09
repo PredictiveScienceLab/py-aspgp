@@ -68,20 +68,23 @@ class ActiveSubspaceKernel(Kern):
         return self.inner_kernel.input_dim
 
     def __init__(self, input_dim, inner_kernel, W=None,
-                 name='ActiveSubspaceKernel'):
+                 name='ActiveSubspaceKernel',
+                 fixed_cols=0):
         """
         Initialize the object.
         """
         super(ActiveSubspaceKernel, self).__init__(input_dim, None, name,
                                                    useGPU=False)
         self.inner_kernel = inner_kernel
+        pW = StiefelPrior(input_dim, inner_kernel.input_dim,
+                          fixed_cols=fixed_cols)
+        self.fixed_cols = fixed_cols
         if W is None:
-            W = randn(self.input_dim, self.active_dim)
-            W = orth(W)
+            W = pW.rvs().reshape(input_dim, inner_kernel.input_dim)
         else:
             assert W.shape == (self.input_dim, self.active_dim)
         self.W = Param('W', W)
-        self.W.set_prior(StiefelPrior(*W.shape))
+        self.W.set_prior(pW)
         self.link_parameters(self.W, self.inner_kernel)
 
     def _get_Z(self, X):
@@ -121,3 +124,7 @@ class ActiveSubspaceKernel(Kern):
         self.inner_kernel.update_gradients_full(dL_dK, Z)
         dL_dZ = self.inner_kernel.gradients_X(dL_dK, Z)
         self.W.gradient = np.einsum('ij,ik->kj', dL_dZ, X)
+        k = self.fixed_cols
+        self.W.gradient[:-k, -k:] = 0.
+        self.W.gradient[-k:, :-k] = 0.
+        self.W.gradient[-k:, -k:] = 0.

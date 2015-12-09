@@ -67,11 +67,12 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
     y = []
     l = []
 
-    def __init__(self, X, Y, inner_kernel, W=None, **kwargs):
+    def __init__(self, X, Y, inner_kernel, W=None, fixed_cols=0, **kwargs):
         """
         Initialize the object.
         """
-        kernel = ActiveSubspaceKernel(X.shape[1], inner_kernel, W=W)
+        kernel = ActiveSubspaceKernel(X.shape[1], inner_kernel, W=W,
+                                      fixed_cols=fixed_cols)
         kernel.W.fix()
         super(ActiveSubspaceGPRegression, self).__init__(X, Y, kernel,
                                                          **kwargs)
