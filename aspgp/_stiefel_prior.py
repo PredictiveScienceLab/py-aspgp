@@ -28,26 +28,49 @@ class StiefelPrior(GPy.priors.Prior):
     domain = GPy.priors._REAL
     _instance = None
 
-    def __init__(self, input_dim, active_dim, alpha=0.):
+    def __init__(self, num_rows, num_cols, alpha=10.,
+                 fixed_cols=0):
         """
         Initialize the object.
+
+        :param num_rows:        The number of rows.
+        :param num_cols:        The number of columns.
+        :param alpha:           The precision of a Gaussian conditioned to
+                                stay on the Stiefel manifold.
+        :param fixed_cols:      The number of identity columns to be attached
+                                at the end.
         """
         self.alpha = alpha
-        self._in = input_dim
-        self._ad = active_dim
-        self.input_dim = input_dim * active_dim
+        self.D = num_rows
+        self.d = num_cols
+        self.k = fixed_cols
 
     def __str__(self):
-        return 'Stiefel({0:d},{1:d})'.format(self._in, self._ad)
+        return 'Stiefel({0:d},{1:d})'.format(self.D, self.d)
 
     def lnpdf(self, W):
         return -0.5 * self.alpha * W ** 2
 
     def lnpdf_grad(self, W):
-        return -self.alpha * W
+        D = self.D
+        d = self.d
+        k = self.k
+        G = -self.alpha * W.reshape((D, d))
+        G[:-k, -k:] = 0.
+        G[-k:, :-k] = 0.
+        G[-k:, -k:] = np.eye(k)
+        return G.flatten()
 
     def rvs(self, n):
-        return orth(randn(self._in, self._ad)).flatten()
+        """
+        It ignores the dimension ``n``.
+        """
+        D = self.D
+        d = self.d
+        k = self.k
+        W_sub = orth(randn(D - k, d - k))
+        return np.bmat([[W_sub, np.zeros((D - k, k))],
+                        [np.zeros((k, d - k)), np.eye(k)]]).flatten()
 
 
 class UninformativePrior(GPy.priors.Prior):
@@ -55,14 +78,14 @@ class UninformativePrior(GPy.priors.Prior):
     A simple uninformative prior.
     """
 
-    def __init__(self, input_dim=1):
+    def __init__(self, num_rows=1):
         """
         Initialize the object.
         """
-        self.input_dim = input_dim
+        self.num_rows = num_rows
 
     def __str__(self):
-        return 'Uninformative({0:d})'.format(self.input_dim)
+        return 'Uninformative({0:d})'.format(self.num_rows)
 
     def lnpdf(self, x):
         return -np.log(x)
