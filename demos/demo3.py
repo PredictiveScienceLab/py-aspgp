@@ -18,7 +18,7 @@ rank = mpi.COMM_WORLD.Get_rank()
 
 
 DEMO_DIR = os.path.join(ASPGP_DIR, 'demos')
-PC_DIR = os.path.join(DEMO_DIR, 'gc_amp_10')
+PC_DIR = os.path.join(DEMO_DIR, 'pc2_data')
 X_FILE = os.path.join(PC_DIR, 'X.npy')
 Y_FILE = os.path.join(PC_DIR, 'Y.npy')
 
@@ -31,14 +31,14 @@ dim = 2
 k = GPy.kern.Matern32(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4.57012948037e-05)
 stiefel_opt = {'disp': False,
                'tau_max': .01,
-               'tol': 1e-5,
+               'tol': 1e-3,
                'tau_find_freq': 10,
                'max_it': 10000}
 
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
-m.optimize_restarts(500, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
+#m.optimize_restarts(500, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
 #m.sample(iter=50, disp=True)
-#m.optimize(stiefel_options=stiefel_opt)
+m.optimize(stiefel_options=stiefel_opt)
 #print m.kern.W
 if rank == 0:
     print str(m)

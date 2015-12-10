@@ -134,7 +134,7 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
 
     class LSFunc(object):
         def __call__(self, tau):
-            return self.func(Y_func(tau[0] * self.tau_max, self.X, self.A), *self.func_args)[0]
+            return self.func(Y_func(np.exp(tau[0]) * self.tau_max, self.X, self.A), *self.func_args)[0]
     ls_func = LSFunc()
     ls_func.func = func
     decrease_tau = False
@@ -149,20 +149,22 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
         ls_func.X = X
         ls_func.func_args = args
         ls_func.tau_max = tau_max
+        increased_tau = False
         if nit == 1 or decrease_tau or nit % tau_find_freq == 0:
             # Need to minimize ls_func with respect to each argument
-            tau_init = np.linspace(0, 1., 5)[:, None]
-            tau_d = np.linspace(0, 1., 50)[:, None]
+            tau_init = np.linspace(-10, 0., 3)[:, None]
+            tau_d = np.linspace(-10, 0., 50)[:, None]
             tau_all, F_all = pybgo.minimize(ls_func, tau_init, tau_d, fixed_noise=1e-16,
-                    add_at_least=3, tol=1e-2, scale=True,
+                    add_at_least=1, tol=1e-2, scale=True,
                     train_every=1)[:2]
             nfev += tau_all.shape[0]
             idx = np.argmin(F_all)
-            tau = tau_all[idx, 0] * tau_max
+            tau = np.exp(tau_all[idx, 0]) * tau_max
             if tau_max - tau <= 1e-6:
                 tau_max = 1.2 * tau_max
                 if disp:
                     print 'increasing tau_max to {0:1.5e}'.format(tau_max)
+                    increased_tau = True
             if decrease_tau:
                 tau_max = .8 * tau_max
                 if disp:
@@ -170,7 +172,7 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
                 decrease_tau = False
             F = F_all[idx, 0]
         else:
-            F = ls_func([tau / tau_max])
+            F = ls_func([np.log(tau /  tau_max)])
         delta_F = (F_old - F) / np.abs(F_old)
         if delta_F < 0:
             if disp:
@@ -181,7 +183,7 @@ def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
         X_old = X
         X = Y_func(tau, X, A)
         if disp:
-            print '{0:4s} {1:1.5e} {2:5e} tau = {3:1.5f}, tau_max = {4:1.3e}'.format(
+            print '{0:4s} {1:1.5e} {2:5e} tau = {3:1.3e}, tau_max = {4:1.3e}'.format(
              str(nit).zfill(4), F, delta_F, tau, tau_max)
         if delta_F <= tol:
             if disp:

@@ -28,7 +28,7 @@ class StiefelPrior(GPy.priors.Prior):
     domain = GPy.priors._REAL
     _instance = None
 
-    def __init__(self, num_rows, num_cols, alpha=10.,
+    def __init__(self, num_rows, num_cols, alpha=0.,
                  fixed_cols=0):
         """
         Initialize the object.

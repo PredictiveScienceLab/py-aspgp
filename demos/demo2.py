@@ -36,25 +36,25 @@ cm.optimize(messages=True)
 #print cm.kern.Mat32.lengthscale
 
 
-k = GPy.kern.Matern32(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4.57012948037e-05)
+k = GPy.kern.RBF(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4.57012948037e-05)
 stiefel_opt = {'disp': False,
-               'tau_max': .01,
-               'tol': 1e-5,
+               'tau_max': 0.5,
+               'tol': 1e-6,
                'tau_find_freq': 10,
-               'max_it': 10000}
-
+               'max_it': 100}
+np.random.seed(1234)
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
-m.optimize_restarts(2, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
 #m.sample(iter=50, disp=True)
-m.optimize_restarts(500, stiefel_options=stiefel_opt)
+#m.optimize_restarts(10, stiefel_options=stiefel_opt, disp=True)
+m.optimize(tol=1e-6, stiefel_options=stiefel_opt, disp=True)
 #print m.kern.W
 if rank == 0:
     print str(m)
-    print m.kern.Mat32.lengthscale
+    print m.kern.inner_kernel.lengthscale
 
     print 'Compare to:'
     print str(cm)
-    print cm.kern.Mat32.lengthscale
+    print cm.kern.inner_kernel.lengthscale
 
     print 'Normalization test:'
     print np.dot(m.kern.W.T, m.kern.W)

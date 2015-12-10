@@ -73,7 +73,6 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         """
         kernel = ActiveSubspaceKernel(X.shape[1], inner_kernel, W=W,
                                       fixed_cols=fixed_cols)
-        kernel.W.fix()
         super(ActiveSubspaceGPRegression, self).__init__(X, Y, kernel,
                                                          **kwargs)
 
@@ -144,7 +143,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
         self.kern.W.unconstrain()
 
-    def optimize(self, max_it=1000, tol=1e-4, disp=False, stiefel_options={}, **kwargs):
+    def optimize(self, max_it=1000, tol=1e-3, disp=False, stiefel_options={}, **kwargs):
         """
         Optimize the model.
         """
@@ -163,15 +162,15 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         self.optimization_runs = []
         while nit <= max_it:
             self.x.append(nit) #Store iteration number history
-            try:
-                self.l.append(np.float(self.kern.inner_kernel.lengthscale.view()))
-            except:
-                self.l.append(np.asarray(self.kern.inner_kernel.lengthscale.view()))
+            #try:
+            #    self.l.append(np.float(self.kern.inner_kernel.lengthscale.view()))
+            #except:
+            #    self.l.append(np.asarray(self.kern.inner_kernel.lengthscale.view()))
             nit += 1
             old_log_like = -self.objective_function()
             self.y.append(old_log_like) #Store log likelihood history 
-            self._optimize_W(stiefel_options)
             self._optimize_other(**kwargs)
+            self._optimize_W(stiefel_options)
             log_like = -self.objective_function()
             delta_log_like = (log_like - old_log_like) / math.fabs(old_log_like)
             if disp:

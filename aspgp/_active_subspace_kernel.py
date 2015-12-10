@@ -125,6 +125,7 @@ class ActiveSubspaceKernel(Kern):
         dL_dZ = self.inner_kernel.gradients_X(dL_dK, Z)
         self.W.gradient = np.einsum('ij,ik->kj', dL_dZ, X)
         k = self.fixed_cols
-        self.W.gradient[:-k, -k:] = 0.
-        self.W.gradient[-k:, :-k] = 0.
-        self.W.gradient[-k:, -k:] = 0.
+        if k >= 1:
+            self.W.gradient[:-k, -k:] = 0.
+            self.W.gradient[-k:, :-k] = 0.
+            self.W.gradient[-k:, -k:] = 0.
