@@ -28,7 +28,7 @@ Y = np.load(Y_FILE)
 G = np.load(G_FILE)
 
 
-dim = 2
+dim = 3
 ck = GPy.kern.Matern32(dim, ARD=True)
 cm = aspgp.ClassicActiveSubspaceGPRegression(X, Y, G, ck)
 cm.optimize(messages=True)
