@@ -152,7 +152,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         #super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
         x0 = self.optimizer_array.copy()
         res = minimize(_other_obj_fun, x0, args=(self,), method='BFGS', jac=True,
-                       options={'maxiter': 1})
+                       options={'maxiter': 10})
         self.optimizer_array = res.x
         self.kern.W.unconstrain()
 
