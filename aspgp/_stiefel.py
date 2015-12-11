@@ -82,7 +82,7 @@ def func_obj_seq_w_zeros(X, dmax, func, *args):
     return F, G[:, :d]
 
 
-def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-6,
+def optimize_stiefel_seq(func, X0, args=(), tau_max=0.5, max_it=1, tol=1e-6,
                          disp=False, obj_func=func_obj_seq_w_zeros, **kwargs):
     """
     Optimize stiefel sequentially.
@@ -102,8 +102,8 @@ def optimize_stiefel_seq(func, X0, args=(), tau_max=0.1, max_it=100, tol=1e-6,
     return res
 
 
-def optimize_stiefel(func, X0, args=(), tau_max=1., max_it=100, tol=1e-3,
-                     disp=True, tau_find_freq=100):
+def optimize_stiefel(func, X0, args=(), tau_max=.5, max_it=1, tol=1e-6,
+                     disp=False, tau_find_freq=100):
     """
     Optimize a function over a Stiefel manifold.
 

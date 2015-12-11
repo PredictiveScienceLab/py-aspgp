@@ -44,20 +44,14 @@ Y_train = Y[:280, :]
 X_val = X[280:, :]
 Y_val = Y[280:, :]
 
-dim = 3
+dim = 2
 
 np.random.seed(1234)
 
 k = GPy.kern.Matern32(dim, ARD=True)
-stiefel_opt = {'disp': False,
-               'tau_max': 0.5,
-               'tol': 1e-6,
-               'tau_find_freq': 1,
-               'max_it': 1}
 
 m = aspgp.ActiveSubspaceGPRegression(X_train, Y_train, k)#, fixed_cols=5)
-m.optimize_restarts(1, tol=1e-6, disp=True, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
-#m.optimize(tol=1e-10, disp=True, stiefel_options=stiefel_opt)
+m.optimize(disp=True, maxiter=100)
 print m.bic()
 
 if rank == 0:

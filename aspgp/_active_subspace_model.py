@@ -142,7 +142,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
                                                                     log_p)
                                                     
 
-    def _optimize_other(self, **kwargs):
+    def _optimize_other(self, method='BFGS', maxiter=40):
         """
         Optimize with respect to all the other parameters.
 
@@ -152,11 +152,11 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         #super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
         x0 = self.optimizer_array.copy()
         res = minimize(_other_obj_fun, x0, args=(self,), method='BFGS', jac=True,
-                       options={'maxiter': 10})
+                       options={'maxiter': maxiter})
         self.optimizer_array = res.x
         self.kern.W.unconstrain()
 
-    def optimize(self, max_it=1000, tol=1e-3, disp=False, stiefel_options={}, **kwargs):
+    def optimize(self, max_it=1000, tol=1e-6, disp=False, stiefel_options={}, **kwargs):
         """
         Optimize the model.
         """
