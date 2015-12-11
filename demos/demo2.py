@@ -18,7 +18,7 @@ rank = mpi.COMM_WORLD.Get_rank()
 
 
 DEMO_DIR = os.path.join(ASPGP_DIR, 'demos')
-PC_DIR = os.path.join(DEMO_DIR, 'pc2_data')
+PC_DIR = os.path.join(DEMO_DIR, 'pc1_data')
 X_FILE = os.path.join(PC_DIR, 'X.npy')
 Y_FILE = os.path.join(PC_DIR, 'Y.npy')
 G_FILE = os.path.join(PC_DIR, 'G.npy')
@@ -28,7 +28,7 @@ Y = np.load(Y_FILE)
 G = np.load(G_FILE)
 
 
-dim = 1
+dim = 2
 ck = GPy.kern.Matern32(dim, ARD=True)
 cm = aspgp.ClassicActiveSubspaceGPRegression(X, Y, G, ck)
 cm.optimize(messages=True)
@@ -46,7 +46,10 @@ np.random.seed(1234)
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
 #m.sample(iter=50, disp=True)
 #m.optimize_restarts(10, stiefel_options=stiefel_opt, disp=True)
-m.optimize(tol=1e-6, stiefel_options=stiefel_opt, disp=True)
+m.optimize(tol=1e-6,   # Overall tolerance
+           maxiter=1, # Maximum number of iterations of hyper-parameter optimization
+           stiefel_options=stiefel_opt,
+           disp=True)
 #print m.kern.W
 if rank == 0:
     print str(m)

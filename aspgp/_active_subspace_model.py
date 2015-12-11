@@ -205,6 +205,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         l_opt.f_opt = -log_like# self.objective_function()
         l_opt.x_opt = self.optimizer_array.copy()
         self.optimization_runs = old_optimization_runs + [l_opt]
+        self._optimize_other(maxiter=10000)
 
     def get_active_model(self):
         """
