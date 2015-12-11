@@ -18,7 +18,7 @@ rank = mpi.COMM_WORLD.Get_rank()
 
 
 DEMO_DIR = os.path.join(ASPGP_DIR, 'demos')
-PC_DIR = os.path.join(DEMO_DIR, 'pc1_data')
+PC_DIR = os.path.join(DEMO_DIR, 'pc2_data')
 X_FILE = os.path.join(PC_DIR, 'X.npy')
 Y_FILE = os.path.join(PC_DIR, 'Y.npy')
 G_FILE = os.path.join(PC_DIR, 'G.npy')
@@ -28,7 +28,7 @@ Y = np.load(Y_FILE)
 G = np.load(G_FILE)
 
 
-dim = 3
+dim = 1
 ck = GPy.kern.Matern32(dim, ARD=True)
 cm = aspgp.ClassicActiveSubspaceGPRegression(X, Y, G, ck)
 cm.optimize(messages=True)
@@ -40,8 +40,8 @@ k = GPy.kern.RBF(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4
 stiefel_opt = {'disp': False,
                'tau_max': 0.5,
                'tol': 1e-6,
-               'tau_find_freq': 10,
-               'max_it': 100}
+               'tau_find_freq': 1,
+               'max_it': 1}
 np.random.seed(1234)
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
 #m.sample(iter=50, disp=True)

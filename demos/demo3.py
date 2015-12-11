@@ -26,20 +26,18 @@ X = np.load(X_FILE)
 Y = np.load(Y_FILE)
 
 
-dim = 2
+dim = 1
 
 k = GPy.kern.Matern32(dim, ARD=True)#, lengthscale=[18.4966923967, 7000.], variance=4.57012948037e-05)
 stiefel_opt = {'disp': False,
-               'tau_max': .01,
-               'tol': 1e-3,
+               'tau_max': 0.5,
+               'tol': 1e-6,
                'tau_find_freq': 10,
-               'max_it': 10000}
+               'max_it': 100}
 
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
-#m.optimize_restarts(500, stiefel_options=stiefel_opt, comm=mpi.COMM_WORLD)
-#m.sample(iter=50, disp=True)
-m.optimize(stiefel_options=stiefel_opt)
-#print m.kern.W
+m.optimize(tol=1e-6, stiefel_options=stiefel_opt)
+
 if rank == 0:
     print str(m)
     print m.kern.Mat32.lengthscale

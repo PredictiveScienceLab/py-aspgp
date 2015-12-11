@@ -22,11 +22,13 @@ from . import hmc_step
 from . import hmc_step_stiefel
 import math
 import numpy as np
+from scipy.optimize import minimize
 from collections import Iterable
 from GPy.models import GPRegression
 from GPy.kern import RBF
 from pysmc import MCMCWrapper
 from pdb import set_trace as keyboard
+
 
 __all__ = ['ActiveSubspaceGPRegression']
 
@@ -55,6 +57,13 @@ def _W_log_pi(W, obj):
 def _other_log_pi(x, obj):
     F, G = obj._objective_grads(x)
     return F, G
+
+def _other_obj_fun(param, obj):
+    """
+    The objective function used for the optimization with respect to the
+    rest of the hyper-parameters.
+    """
+    return obj._objective_grads(param)
 
 
 class ActiveSubspaceGPRegression(ParallelizedGPRegression):
@@ -140,7 +149,11 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
         The options are the same as those of the classic ``GPRegression.optimize()``.
         """
         self.kern.W.fix()
-        super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
+        #super(ActiveSubspaceGPRegression, self).optimize(**kwargs)
+        x0 = self.optimizer_array.copy()
+        res = minimize(_other_obj_fun, x0, args=(self,), method='BFGS', jac=True,
+                       options={'maxiter': 1})
+        self.optimizer_array = res.x
         self.kern.W.unconstrain()
 
     def optimize(self, max_it=1000, tol=1e-3, disp=False, stiefel_options={}, **kwargs):
@@ -168,9 +181,14 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
             #    self.l.append(np.asarray(self.kern.inner_kernel.lengthscale.view()))
             nit += 1
             old_log_like = -self.objective_function()
+            #print '*** 1: {0:6e}', self.objective_function()
+            #print '*** l:', self.kern.inner_kernel
             self.y.append(old_log_like) #Store log likelihood history 
             self._optimize_other(**kwargs)
+            #print '*** 2: {0:6e}', self.objective_function()
+            #print '*** l:', self.kern.inner_kernel
             self._optimize_W(stiefel_options)
+            #print '*** 3: {0:6e}', self.objective_function()
             log_like = -self.objective_function()
             delta_log_like = (log_like - old_log_like) / math.fabs(old_log_like)
             if disp:
