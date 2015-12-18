@@ -31,6 +31,11 @@ import math
 import pybgo
 
 
+class LSFunc(object):
+        def __call__(self, tau):
+            return self.func(Y_func(np.exp(tau[0]) * self.tau_max, self.X, self.A), *self.func_args)[0]
+
+
 __all__ = ['optimize_stiefel', 'optimize_stiefel_seq']
 
 
@@ -132,9 +137,7 @@ def optimize_stiefel(func, X0, args=(), tau_max=.5, max_it=1, tol=1e-6,
         print '{0:4s} {1:11s} {2:5s}'.format('It', 'F', '(F - F_old) / F_old')
         print '-' * 30
 
-    class LSFunc(object):
-        def __call__(self, tau):
-            return self.func(Y_func(np.exp(tau[0]) * self.tau_max, self.X, self.A), *self.func_args)[0]
+    
     ls_func = LSFunc()
     ls_func.func = func
     decrease_tau = False
