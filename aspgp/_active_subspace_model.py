@@ -33,6 +33,11 @@ from pdb import set_trace as keyboard
 __all__ = ['ActiveSubspaceGPRegression']
 
 
+class Foo(object):
+    f_opt = None
+    x_opt = None
+
+
 global count
 count = 0
 def _W_obj_fun(W, obj):
@@ -198,9 +203,7 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
                 if disp:
                     print '*** Converged ***'
                 break
-        class Foo(object):
-            f_opt = None
-            x_opt = None
+
         l_opt = Foo() #self.optimization_runs[-1]
         l_opt.f_opt = -log_like# self.objective_function()
         l_opt.x_opt = self.optimizer_array.copy()
