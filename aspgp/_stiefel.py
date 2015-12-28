@@ -194,6 +194,7 @@ def optimize_stiefel(func, X0, args=(), tau_max=.5, max_it=1, tol=1e-6,
             success = True
             break
     res = OptimizeResult()
+    res.tau_max = tau_max
     res.X = X
     res.nfev = nfev
     res.nit = nit
