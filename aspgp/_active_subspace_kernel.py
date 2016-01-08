@@ -77,7 +77,8 @@ class ActiveSubspaceKernel(Kern):
                                                    useGPU=False)
         self.inner_kernel = inner_kernel
         pW = StiefelPrior(input_dim, inner_kernel.input_dim,
-                          fixed_cols=fixed_cols)
+                          fixed_cols=fixed_cols,
+                          alpha=100.)
         self.fixed_cols = fixed_cols
         if W is None:
             W = pW.rvs().reshape(input_dim, inner_kernel.input_dim)

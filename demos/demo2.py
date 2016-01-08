@@ -18,7 +18,7 @@ rank = mpi.COMM_WORLD.Get_rank()
 
 
 DEMO_DIR = os.path.join(ASPGP_DIR, 'demos')
-PC_DIR = os.path.join(DEMO_DIR, 'pc1_data')
+PC_DIR = os.path.join(DEMO_DIR, 'pc2_data')
 X_FILE = os.path.join(PC_DIR, 'X.npy')
 Y_FILE = os.path.join(PC_DIR, 'Y.npy')
 G_FILE = os.path.join(PC_DIR, 'G.npy')
@@ -26,6 +26,10 @@ G_FILE = os.path.join(PC_DIR, 'G.npy')
 X = np.load(X_FILE)
 Y = np.load(Y_FILE)
 G = np.load(G_FILE)
+Y_m = Y.mean()
+Y_s = Y.std()
+Y = (Y - Y_m) / Y_s
+G = G / Y_s
 
 
 dim = 2
@@ -46,7 +50,7 @@ np.random.seed(1234)
 m = aspgp.ActiveSubspaceGPRegression(X, Y, k)
 #m.sample(iter=50, disp=True)
 #m.optimize_restarts(10, stiefel_options=stiefel_opt, disp=True)
-m.optimize(tol=1e-6,   # Overall tolerance
+m.optimize(tol=1e-2,   # Overall tolerance
            maxiter=1, # Maximum number of iterations of hyper-parameter optimization
            stiefel_options=stiefel_opt,
            disp=True)

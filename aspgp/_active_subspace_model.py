@@ -201,9 +201,9 @@ class ActiveSubspaceGPRegression(ParallelizedGPRegression):
     
         # Tighten it up
         nit = 0
+        if disp:
+            print 'Tighten it up...'
         while nit <= max_it:
-            if disp:
-                print 'Tighten it up...'
             old_log_like = -self.objective_function()
             self._optimize_other(maxiter=1000)
             stiefel_options['max_it'] = 100
