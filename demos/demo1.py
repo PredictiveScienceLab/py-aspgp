@@ -11,12 +11,18 @@ AUTHOR - Rohit K. Tripathy
 """
 
 import GPy
-from aspgp import *
+#from aspgp import *
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.linalg import orth
 import pickle
 import os
+import sys
+cwd=os.getcwd()
+aspgpdir=os.path.abspath(os.path.join(cwd, '..'))
+sys.path.insert(0, aspgpdir)
+from aspgp import *
 np.random.seed(42353)
 from pdb import set_trace as keyboard
 sns.set_context('paper')
@@ -28,6 +34,7 @@ X = np.random.randn(100, 10)
 #The projection matrix.
 #This will be the true underlying W matrix which our algorithm will hopefully discover
 W = np.random.randn(10, 1)
+W = orth(W)
 
 #coefficients of the linear subspace
 a = np.random.randn()
@@ -65,7 +72,7 @@ print "=" * 43
 print "The active subspace model(unoptimized) is :"
 print "=" * 43
 print model
-
+print 'Optimizing ...'
 #now we optimize the model and save the surrogate if we haven't already done it
 if os.path.exists('demo1.pcl'):
     with open('demo1.pcl', 'rb') as f:
